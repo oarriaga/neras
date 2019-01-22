@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 
 
 class Dense():
@@ -15,26 +16,46 @@ class Dense():
         self.deltas = None
 
     def initialize_weights(self):
+        """
         self.weights = np.random.rand(
             self.output_shape, self.input_shape)
         self.bias = np.random.rand(self.output_shape, 1)
+        """
 
-    def forward_pass(self, training_input):
-        net = np.dot(self.weights, training_input) + self.bias
-        y_predicted = self.gamma(net)
-        return y_predicted
+        limit = 1 / np.sqrt(self.input_shape)
+        self.weights = np.random.uniform(
+            -limit, limit, (self.output_shape, self.input_shape))
+        # self.bias = np.zeros((self.output_shape, 1))
+        self.bias = np.random.rand(self.output_shape, 1)
 
-    def gamma(self, net):
+    def forward_pass(self, X):
+        return self.gamma(np.dot(self.weights, X) + self.bias)
+
+    def gamma(self, x):
         if self.activation == 'linear':
-            return net
-        if self.activation == 'sigmoid':
-            return 1.0 / (1.0 + np.exp(-1.0 * net))
+            return x
 
-    def gamma_derivative(self, net):
-        if self.activation == 'linear':
-            return np.ones_like(net)
         if self.activation == 'sigmoid':
-            return net * (1 - net)
+            return 1.0 / (1.0 + np.exp(-1.0 * x))
+
+        if self.activation == 'relu':
+            return np.maximum(x, 0)
+
+        if self.activation == 'tanh':
+            return 2 / (1 + np.exp(-2 * x)) - 1
+
+    def gamma_derivative(self, x):
+        if self.activation == 'linear':
+            return np.ones_like(x)
+
+        if self.activation == 'sigmoid':
+            return self.gamma(x) * (1 - self.gamma(x))
+
+        if self.activation == 'relu':
+            return np.where(x >= 0, 1, 0)
+
+        if self.activation == 'tanh':
+            return 1 - np.power(self.gamma(x), 2)
 
 
 class Sequential():
@@ -97,18 +118,6 @@ class Sequential():
             X_sample = X[sample_arg:(sample_arg + 1)].T
             y_sample = y[sample_arg:(sample_arg + 1)].T
             layer_outputs, layer_input = [], X_sample
-            """
-            for layer_arg, layer in enumerate(self.layers):
-                print(layer_arg)
-                print('layer_input', layer_input.shape)
-                if layer_arg > 0:
-                    layer_input = layer_outputs[-1]
-                    print('layer_output_shape', layer_outputs[-1].shape)
-                layer_output = layer.forward_pass(layer_input)
-                print(layer.name)
-                print('layer_output', layer_output.shape)
-                layer_outputs.append(layer_output)
-            """
 
             layer_outputs = []
             tensor = X_sample
@@ -116,23 +125,16 @@ class Sequential():
                 tensor = layer.forward_pass(tensor)
                 layer_outputs.append(tensor)
 
-            # print('layer_outputs_final length:', len(layer_outputs))
-            # for layer_o in layer_outputs:
-            #     print('layer_o', layer_o.shape)
             layer_args = list(range(len(self.layers))[::-1])
             for layer_arg, layer in zip(layer_args, reversed(self.layers)):
                 layer_output = layer_outputs[layer_arg]
                 if layer_arg == (len(self.layers) - 1):
-                    loss_derivative = y_sample - layer_output
+                    loss_derivative = -(y_sample - layer_output)
                     gamma_derivative = layer.gamma_derivative(layer_output)
                     layer.deltas = gamma_derivative * loss_derivative
-                    # print('loss_derivative', loss_derivative.shape)
-                    # print('gamma_derivative', gamma_derivative.shape)
                 else:
                     upper_deltas = self.layers[layer_arg + 1].deltas
                     weights = self.layers[layer_arg + 1].weights
-                    # print('weights_shape', weights.shape)
-                    # print('upper_deltas', upper_deltas.shape)
                     weighted_error = np.dot(weights.T, upper_deltas)
                     gamma_derivative = layer.gamma_derivative(layer_output)
                     weighted_error = np.dot(weights.T, upper_deltas)
@@ -141,8 +143,14 @@ class Sequential():
                     layer_input = X_sample
                 else:
                     layer_input = layer_outputs[layer_arg - 1]
+
                 delta_weights = np.dot(layer_input, layer.deltas.T).T
-                layer.weights = layer.weights + (self.learning_rate * delta_weights)
+                layer.weights = (
+                    layer.weights - (self.learning_rate * delta_weights))
+
+                bias_derivative = np.sum(layer.deltas, axis=0, keepdims=True)
+                layer.bias = (
+                    layer.bias - (self.learning_rate * bias_derivative))
 
 
 def create_xor_data():
@@ -158,11 +166,11 @@ X, y = create_xor_data()
 
 
 model = Sequential()
-model.add(Dense(2, input_dim=2, activation='sigmoid'))
-model.add(Dense(2, activation='sigmoid'))
+model.add(Dense(2, input_dim=2, activation='tanh'))
+model.add(Dense(2, activation='tanh'))
 model.add(Dense(1, activation='sigmoid'))
-model.compile(loss='MSE', learning_rate=0.01)
-loss_history = model.fit(X, y, num_epochs=1000000, verbose=True)
+model.compile(loss='MSE', learning_rate=0.1)
+loss_history = model.fit(X, y, num_epochs=20000, verbose=True)
 
 plt.plot(loss_history)
 plt.title('Loss history with random weights for XOR')
@@ -170,32 +178,25 @@ plt.xlabel('epoch')
 plt.ylabel('MSE loss')
 plt.show()
 
-x_test = np.array([[1, 0]])
-print('Prediction of [1, 0]:', model.predict(x_test.T))
-x_test = np.array([[0, 1]])
-print('Prediction of [0, 1]:', model.predict(x_test.T))
-x_test = np.array([[1, 1]])
-print('Prediction of [1, 1]:', model.predict(x_test.T))
-x_test = np.array([[0, 0]])
-print('Prediction of [0, 0]:', model.predict(x_test.T))
+cm_bright = ListedColormap(['#FF0000', '#0000FF'])
+plt.scatter(X[:, 0], X[:, 1], c=y.reshape(-1), cmap=cm_bright, edgecolors='k')
 
-print(X)
-print(y)
+xx, yy = np.meshgrid(np.arange(-.5, 1.5, .02), np.arange(-.5, 1.5, .02))
+input_points = np.c_[xx.ravel(), yy.ravel()]
+Z = []
+for input_point in input_points:
+    input_point = np.expand_dims(input_point, 0)
+    prediction = model.predict(input_point.T)
+    prediction = np.squeeze(prediction)
+    Z.append(prediction)
+Z = np.asarray(Z)
 
-x_data = np.arange(-2, 2, .1)
-y_data = np.arange(-2, 2, .1)
-for x in x_data:
-    for y in y_data:
-        input_point = np.array([[x, y]])
-        class_point = model.predict(input_point.T)
-        class_point = class_point > .5
-        if class_point[0][0]:
-            col = 'ro'
-        else:
-            col = 'bo'
-        plt.plot(x, y, col, markersize=5)
+# Put the result into a color plot
+cm = plt.cm.RdBu
+Z = Z.reshape(xx.shape)
 
-plt.xlim([-2, 2])
-plt.ylim([-2, 2])
+plt.contourf(xx, yy, Z, cmap=cm, alpha=.8)
 plt.title('Decision boundary for the XOR')
+plt.xlim([-.5, 1.5])
+plt.ylim([-.5, 1.5])
 plt.show()
