@@ -28,7 +28,7 @@ class Dense():
         if self.activation == 'linear':
             return net
         if self.activation == 'sigmoid':
-            return 1.0/(1.0 + np.exp(-1.0 * net))
+            return 1.0 / (1.0 + np.exp(-1.0 * net))
 
     def gamma_derivative(self, net):
         if self.activation == 'linear':
@@ -78,7 +78,7 @@ class Sequential():
             total_loss = np.sum(self.calculate_loss(X, y))
             loss_history.append(total_loss)
             if verbose:
-                print('epoch:', epoch/num_epochs, 'loss:', total_loss)
+                print('epoch:', epoch / num_epochs, 'loss:', total_loss)
         return loss_history
 
     def calculate_loss(self, X, y):
@@ -111,10 +111,10 @@ class Sequential():
             """
 
             layer_outputs = []
-            X = X_sample
+            tensor = X_sample
             for layer in self.layers:
-                X = layer.forward_pass(X)
-                layer_outputs.append(X)
+                tensor = layer.forward_pass(tensor)
+                layer_outputs.append(tensor)
 
             # print('layer_outputs_final length:', len(layer_outputs))
             # for layer_o in layer_outputs:
@@ -159,10 +159,10 @@ X, y = create_xor_data()
 
 model = Sequential()
 model.add(Dense(2, input_dim=2, activation='sigmoid'))
-model.add(Dense(10, activation='sigmoid'))
+model.add(Dense(2, activation='sigmoid'))
 model.add(Dense(1, activation='sigmoid'))
 model.compile(loss='MSE', learning_rate=0.01)
-loss_history = model.fit(X, y, num_epochs=10000, verbose=True)
+loss_history = model.fit(X, y, num_epochs=1000000, verbose=True)
 
 plt.plot(loss_history)
 plt.title('Loss history with random weights for XOR')
