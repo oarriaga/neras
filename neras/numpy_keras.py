@@ -25,8 +25,7 @@ class Dense():
         limit = 1 / np.sqrt(self.input_shape)
         self.weights = np.random.uniform(
             -limit, limit, (self.output_shape, self.input_shape))
-        # self.bias = np.zeros((self.output_shape, 1))
-        self.bias = np.random.rand(self.output_shape, 1)
+        self.bias = np.zeros((self.output_shape, 1))
 
     def forward_pass(self, X):
         return self.gamma(np.dot(self.weights, X) + self.bias)
@@ -39,7 +38,7 @@ class Dense():
             return 1.0 / (1.0 + np.exp(-1.0 * x))
 
         if self.activation == 'relu':
-            return np.maximum(x, 0)
+            return np.where(x > 0, x, 0)
 
         if self.activation == 'tanh':
             return 2 / (1 + np.exp(-2 * x)) - 1
@@ -52,7 +51,7 @@ class Dense():
             return self.gamma(x) * (1 - self.gamma(x))
 
         if self.activation == 'relu':
-            return np.where(x >= 0, 1, 0)
+            return np.where(x > 0, 1, 0)
 
         if self.activation == 'tanh':
             return 1 - np.power(self.gamma(x), 2)
@@ -158,6 +157,7 @@ def create_xor_data():
     x2, y2 = np.array([[0, 1]]), np.array([[1]])
     x3, y3 = np.array([[1, 1]]), np.array([[0]])
     x4, y4 = np.array([[0, 0]]), np.array([[0]])
+
     x = np.vstack((x1, x2, x3, x4))
     y = np.vstack((y1, y2, y3, y4))
     return x, y
@@ -166,11 +166,11 @@ X, y = create_xor_data()
 
 
 model = Sequential()
-model.add(Dense(2, input_dim=2, activation='tanh'))
-model.add(Dense(2, activation='tanh'))
+model.add(Dense(8, input_dim=2, activation='tanh'))
+model.add(Dense(16, activation='tanh'))
 model.add(Dense(1, activation='sigmoid'))
-model.compile(loss='MSE', learning_rate=0.1)
-loss_history = model.fit(X, y, num_epochs=20000, verbose=True)
+model.compile(loss='MSE', learning_rate=0.01)
+loss_history = model.fit(X, y, num_epochs=10000, verbose=True)
 
 plt.plot(loss_history)
 plt.title('Loss history with random weights for XOR')
