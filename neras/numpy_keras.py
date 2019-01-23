@@ -5,27 +5,32 @@ from matplotlib.colors import ListedColormap
 
 class Dense():
     def __init__(self, output_dim=None, input_dim=None,
-                 activation='linear'):
+                 activation='linear', kernel_initializer='glorot_uniform',
+                 bias_initializer='zeros'):
 
         self.input_shape = input_dim
         self.output_shape = output_dim
+        self.activation = activation
+        self.kernel_initializer = kernel_initializer
+        self.bias_initializer = bias_initializer
         self.weights = (None, None)
         self.bias = None
         self.name = 'dense'
-        self.activation = activation
         self.deltas = None
 
     def initialize_weights(self):
-        """
-        self.weights = np.random.rand(
-            self.output_shape, self.input_shape)
-        self.bias = np.random.rand(self.output_shape, 1)
-        """
+        if self.kernel_initializer == 'glorot_uniform':
+            limit = 1 / np.sqrt(self.input_shape)
+            self.weights = np.random.uniform(
+                -limit, limit, (self.output_shape, self.input_shape))
+        if self.kernel_initializer == 'uniform':
+            self.weights = np.random.rand(self.output_shape, self.input_shape)
 
-        limit = 1 / np.sqrt(self.input_shape)
-        self.weights = np.random.uniform(
-            -limit, limit, (self.output_shape, self.input_shape))
-        self.bias = np.zeros((self.output_shape, 1))
+        if self.bias_initializer == 'zeros':
+            self.bias = np.zeros((self.output_shape, 1))
+
+        if self.bias_initializer == 'uniform':
+            self.bias = np.random.rand(self.output_shape, 1)
 
     def forward_pass(self, X):
         return self.gamma(np.dot(self.weights, X) + self.bias)
@@ -166,11 +171,11 @@ X, y = create_xor_data()
 
 
 model = Sequential()
-model.add(Dense(8, input_dim=2, activation='tanh'))
-model.add(Dense(16, activation='tanh'))
+model.add(Dense(8, input_dim=2, activation='relu'))
+model.add(Dense(16, activation='relu'))
 model.add(Dense(1, activation='sigmoid'))
 model.compile(loss='MSE', learning_rate=0.01)
-loss_history = model.fit(X, y, num_epochs=10000, verbose=True)
+loss_history = model.fit(X, y, num_epochs=20000, verbose=True)
 
 plt.plot(loss_history)
 plt.title('Loss history with random weights for XOR')
